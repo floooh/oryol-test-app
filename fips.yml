@@ -3,5 +3,6 @@
 #
 ---
 imports: 
-    - oryol
+    oryol:
+        git: https://github.com/floooh/oryol.git
 
