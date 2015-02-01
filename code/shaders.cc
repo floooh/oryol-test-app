@@ -1,11 +1,11 @@
 //-----------------------------------------------------------------------------
-// #version:7# machine generated, do not edit!
+// #version:15# machine generated, do not edit!
 //-----------------------------------------------------------------------------
 #include "Pre.h"
 #include "shaders.h"
 
 namespace Oryol {
-namespace Shaders{
+namespace Shaders {
 const char* renderTargetVS_100_src = 
 "#define _POSITION gl_Position\n"
 "uniform mat4 mvp;\n"
