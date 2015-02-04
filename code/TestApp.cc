@@ -84,7 +84,7 @@ TestApp::OnInit() {
     
     // create a donut (this will be rendered into the offscreen render target)
     ShapeBuilder shapeBuilder;
-    shapeBuilder.Layout()
+    shapeBuilder.Layout
         .Add(VertexAttr::Position, VertexFormat::Float3)
         .Add(VertexAttr::Normal, VertexFormat::Byte4N);
     shapeBuilder.Box(1.0f, 1.0f, 1.0f, 1).Build();
@@ -92,7 +92,7 @@ TestApp::OnInit() {
     
     // create a sphere mesh with normals and uv coords
     shapeBuilder.Clear();
-    shapeBuilder.Layout()
+    shapeBuilder.Layout
         .Add(VertexAttr::Position, VertexFormat::Float3)
         .Add(VertexAttr::Normal, VertexFormat::Byte4N)
         .Add(VertexAttr::TexCoord0, VertexFormat::Float2);
