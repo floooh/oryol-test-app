@@ -5,7 +5,7 @@ Oryol testing app in its own repo. To build and run from scratch:
 
 ```bash
 > cd ~
-> mkdir fips-sratch
+> mkdir fips-scratch
 > cd fips-scratch
 > git clone git@github.com:floooh/oryol-test-app.git
 > cd oryol-test-app
