@@ -23,11 +23,16 @@ private:
     Id renderTarget;
     Id offscreenDrawState;
     Id displayDrawState;
+    ClearState offscreenClearState;
+    ClearState displayClearState;
     glm::mat4 view;
     glm::mat4 offscreenProj;
     glm::mat4 displayProj;
     float32 angleX = 0.0f;
     float32 angleY = 0.0f;
+    Shaders::RenderTarget::Params offscreenParams;
+    Shaders::Main::VSParams displayVSParams;
+    Shaders::Main::FSParams displayFSParams;
 };
 OryolMain(TestApp);
 
@@ -35,25 +40,23 @@ OryolMain(TestApp);
 AppState::Code
 TestApp::OnRunning() {
     
-    // update angles
+    // update animated parameters
     this->angleY += 0.01f;
     this->angleX += 0.02f;
-    
+    this->offscreenParams.ModelViewProjection = this->computeMVP(this->offscreenProj, this->angleX, this->angleY, glm::vec3(0.0f, 0.0f, -3.0f));
+    this->displayVSParams.ModelViewProjection = this->computeMVP(this->displayProj, -this->angleX * 0.25f, this->angleY * 0.25f, glm::vec3(0.0f, 0.0f, -1.5f));;
+
     // render donut to offscreen render target
-    Gfx::ApplyOffscreenRenderTarget(this->renderTarget);
-    Gfx::Clear(PixelChannel::All, glm::vec4(0.25f));
+    Gfx::ApplyRenderTarget(this->renderTarget, this->offscreenClearState);
     Gfx::ApplyDrawState(this->offscreenDrawState);
-    glm::mat4 donutMVP = this->computeMVP(this->offscreenProj, this->angleX, this->angleY, glm::vec3(0.0f, 0.0f, -3.0f));
-    Gfx::ApplyVariable(Shaders::RenderTarget::ModelViewProjection, donutMVP);
+    Gfx::ApplyUniformBlock(this->offscreenParams);
     Gfx::Draw(0);
     
     // render sphere to display, with offscreen render target as texture
-    Gfx::ApplyDefaultRenderTarget();
-    Gfx::Clear(PixelChannel::All, glm::vec4(0.25f), 1.0f, 0);
+    Gfx::ApplyDefaultRenderTarget(this->displayClearState);
     Gfx::ApplyDrawState(this->displayDrawState);
-    glm::mat4 sphereMVP = this->computeMVP(this->displayProj, -this->angleX * 0.25f, this->angleY * 0.25f, glm::vec3(0.0f, 0.0f, -1.5f));
-    Gfx::ApplyVariable(Shaders::Main::ModelViewProjection, sphereMVP);
-    Gfx::ApplyVariable(Shaders::Main::Texture, this->renderTarget);
+    Gfx::ApplyUniformBlock(this->displayVSParams);
+    Gfx::ApplyUniformBlock(this->displayFSParams);
     Gfx::Draw(0);
     
     Gfx::CommitFrame();
@@ -66,18 +69,19 @@ TestApp::OnRunning() {
 AppState::Code
 TestApp::OnInit() {
     // setup rendering system
-    Gfx::Setup(GfxSetup::WindowMSAA4(800, 600, "Oryol Test App"));
+    auto gfxSetup = GfxSetup::WindowMSAA4(800, 600, "Oryol Test App");
+    Gfx::Setup(gfxSetup);
 
     // create an offscreen render target, we explicitly want repeat texture wrap mode
     // and linear blending...
     auto rtSetup = TextureSetup::RenderTarget(128, 128);
-    rtSetup.ColorFormat = PixelFormat::RGB8;
+    rtSetup.ColorFormat = PixelFormat::RGBA8;
     rtSetup.DepthFormat = PixelFormat::D16;
     rtSetup.WrapU = TextureWrapMode::Repeat;
     rtSetup.WrapV = TextureWrapMode::Repeat;
     rtSetup.MagFilter = TextureFilterMode::Linear;
     rtSetup.MinFilter = TextureFilterMode::Linear;
-    this->renderTarget = Gfx::Resource().Create(rtSetup);
+    this->renderTarget = Gfx::CreateResource(rtSetup);
     
     // create a donut (this will be rendered into the offscreen render target)
     ShapeBuilder shapeBuilder;
@@ -85,7 +89,7 @@ TestApp::OnInit() {
         .Add(VertexAttr::Position, VertexFormat::Float3)
         .Add(VertexAttr::Normal, VertexFormat::Byte4N);
     shapeBuilder.Box(1.0f, 1.0f, 1.0f, 1).Build();
-    Id torus = Gfx::Resource().Create(shapeBuilder.Result());
+    Id torus = Gfx::CreateResource(shapeBuilder.Result());
     
     // create a sphere mesh with normals and uv coords
     shapeBuilder.Clear();
@@ -94,22 +98,30 @@ TestApp::OnInit() {
         .Add(VertexAttr::Normal, VertexFormat::Byte4N)
         .Add(VertexAttr::TexCoord0, VertexFormat::Float2);
     shapeBuilder.Sphere(0.5f, 72.0f, 40.0f).Build();
-    Id sphere = Gfx::Resource().Create(shapeBuilder.Result());
+    Id sphere = Gfx::CreateResource(shapeBuilder.Result());
 
     // create shaders
-    Id offScreenProg = Gfx::Resource().Create(Shaders::RenderTarget::CreateSetup());
-    Id dispProg = Gfx::Resource().Create(Shaders::Main::CreateSetup());
+    Id offScreenShader = Gfx::CreateResource(Shaders::RenderTarget::CreateSetup());
+    Id dispShader = Gfx::CreateResource(Shaders::Main::CreateSetup());
     
     // create one draw state for offscreen rendering, and one draw state for main target rendering
-    auto offdsSetup = DrawStateSetup::FromMeshAndProg(torus, offScreenProg);
+    auto offdsSetup = DrawStateSetup::FromMeshAndShader(torus, offScreenShader);
     offdsSetup.DepthStencilState.DepthWriteEnabled = true;
     offdsSetup.DepthStencilState.DepthCmpFunc = CompareFunc::LessEqual;
-    this->offscreenDrawState = Gfx::Resource().Create(offdsSetup);
-    auto dispdsSetup = DrawStateSetup::FromMeshAndProg(sphere, dispProg);
+    offdsSetup.BlendState.ColorFormat = rtSetup.ColorFormat;
+    offdsSetup.BlendState.DepthFormat = rtSetup.DepthFormat;    
+    this->offscreenDrawState = Gfx::CreateResource(offdsSetup);
+    auto dispdsSetup = DrawStateSetup::FromMeshAndShader(sphere, dispShader);
     dispdsSetup.DepthStencilState.DepthWriteEnabled = true;
     dispdsSetup.DepthStencilState.DepthCmpFunc = CompareFunc::LessEqual;
-    this->displayDrawState = Gfx::Resource().Create(dispdsSetup);
-    
+    dispdsSetup.RasterizerState.SampleCount = gfxSetup.SampleCount;
+    this->displayDrawState = Gfx::CreateResource(dispdsSetup);
+    this->displayFSParams.Texture = this->renderTarget;
+
+    // setup clear states
+    this->offscreenClearState.Color = glm::vec4(1.0f, 0.5f, 0.25f, 1.0f);
+    this->displayClearState.Color = glm::vec4(0.25f, 0.5f, 1.0f, 1.0f);
+
     // setup static transform matrices
     float32 fbWidth = Gfx::DisplayAttrs().FramebufferWidth;
     float32 fbHeight = Gfx::DisplayAttrs().FramebufferHeight;

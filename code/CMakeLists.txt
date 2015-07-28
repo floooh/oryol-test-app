@@ -1,5 +1,5 @@
 fips_begin_app(TestApp windowed)
     fips_files(TestApp.cc)
-    fips_generate(FROM shaders.shd TYPE Shader)
-    fips_deps(Assets)
+    oryol_shader(shaders.shd)
+    fips_deps(Gfx Assets)
 fips_end_app()
