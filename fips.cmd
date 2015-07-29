@@ -1,3 +1,3 @@
-REM Windows wrapper batch file
-python fips %*
+@python fips %*
+
 

@@ -14,7 +14,7 @@
 @in vec4 normal
 @out vec4 nrm
 {
-    _position = mvp * position;
+    _position = mul(mvp, position);
     nrm = normal;
 }
 @end
@@ -43,9 +43,9 @@
 @out vec4 nrm
 @out vec2 uv
 {
-    _position = mvp * position;
+    _position = mul(mvp, position);
     uv = texcoord0;
-    nrm = normalize(mvp * normal);
+    nrm = normalize(mul(mvp, normal));
 }
 @end
 
