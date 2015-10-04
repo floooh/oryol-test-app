@@ -30,9 +30,9 @@ private:
     glm::mat4 displayProj;
     float32 angleX = 0.0f;
     float32 angleY = 0.0f;
-    Shaders::RenderTarget::Params offscreenParams;
+    Shaders::RenderTarget::VSParams offscreenParams;
     Shaders::Main::VSParams displayVSParams;
-    Shaders::Main::FSParams displayFSParams;
+    Shaders::Main::FSTextures displayFSTextures;
 };
 OryolMain(TestApp);
 
@@ -54,9 +54,8 @@ TestApp::OnRunning() {
     
     // render sphere to display, with offscreen render target as texture
     Gfx::ApplyDefaultRenderTarget(this->displayClearState);
-    Gfx::ApplyDrawState(this->displayDrawState);
+    Gfx::ApplyDrawState(this->displayDrawState, this->displayFSTextures);
     Gfx::ApplyUniformBlock(this->displayVSParams);
-    Gfx::ApplyUniformBlock(this->displayFSParams);
     Gfx::Draw(0);
     
     Gfx::CommitFrame();
@@ -77,10 +76,10 @@ TestApp::OnInit() {
     auto rtSetup = TextureSetup::RenderTarget(128, 128);
     rtSetup.ColorFormat = PixelFormat::RGBA8;
     rtSetup.DepthFormat = PixelFormat::D16;
-    rtSetup.WrapU = TextureWrapMode::Repeat;
-    rtSetup.WrapV = TextureWrapMode::Repeat;
-    rtSetup.MagFilter = TextureFilterMode::Linear;
-    rtSetup.MinFilter = TextureFilterMode::Linear;
+    rtSetup.Sampler.WrapU = TextureWrapMode::Repeat;
+    rtSetup.Sampler.WrapV = TextureWrapMode::Repeat;
+    rtSetup.Sampler.MagFilter = TextureFilterMode::Linear;
+    rtSetup.Sampler.MinFilter = TextureFilterMode::Linear;
     this->renderTarget = Gfx::CreateResource(rtSetup);
     
     // create a donut (this will be rendered into the offscreen render target)
@@ -101,8 +100,8 @@ TestApp::OnInit() {
     Id sphere = Gfx::CreateResource(shapeBuilder.Result());
 
     // create shaders
-    Id offScreenShader = Gfx::CreateResource(Shaders::RenderTarget::CreateSetup());
-    Id dispShader = Gfx::CreateResource(Shaders::Main::CreateSetup());
+    Id offScreenShader = Gfx::CreateResource(Shaders::RenderTarget::Setup());
+    Id dispShader = Gfx::CreateResource(Shaders::Main::Setup());
     
     // create one draw state for offscreen rendering, and one draw state for main target rendering
     auto offdsSetup = DrawStateSetup::FromMeshAndShader(torus, offScreenShader);
@@ -116,7 +115,7 @@ TestApp::OnInit() {
     dispdsSetup.DepthStencilState.DepthCmpFunc = CompareFunc::LessEqual;
     dispdsSetup.RasterizerState.SampleCount = gfxSetup.SampleCount;
     this->displayDrawState = Gfx::CreateResource(dispdsSetup);
-    this->displayFSParams.Texture = this->renderTarget;
+    this->displayFSTextures.Texture = this->renderTarget;
 
     // setup clear states
     this->offscreenClearState.Color = glm::vec4(1.0f, 0.5f, 0.25f, 1.0f);
