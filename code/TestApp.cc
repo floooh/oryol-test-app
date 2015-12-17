@@ -87,17 +87,16 @@ TestApp::OnInit() {
     shapeBuilder.Layout
         .Add(VertexAttr::Position, VertexFormat::Float3)
         .Add(VertexAttr::Normal, VertexFormat::Byte4N);
-    shapeBuilder.Box(1.0f, 1.0f, 1.0f, 1).Build();
-    Id torus = Gfx::CreateResource(shapeBuilder.Result());
+    shapeBuilder.Box(1.0f, 1.0f, 1.0f, 1);
+    Id torus = Gfx::CreateResource(shapeBuilder.Build());
     
     // create a sphere mesh with normals and uv coords
-    shapeBuilder.Clear();
     shapeBuilder.Layout
         .Add(VertexAttr::Position, VertexFormat::Float3)
         .Add(VertexAttr::Normal, VertexFormat::Byte4N)
         .Add(VertexAttr::TexCoord0, VertexFormat::Float2);
-    shapeBuilder.Sphere(0.5f, 72.0f, 40.0f).Build();
-    Id sphere = Gfx::CreateResource(shapeBuilder.Result());
+    shapeBuilder.Sphere(0.5f, 72.0f, 40.0f);
+    Id sphere = Gfx::CreateResource(shapeBuilder.Build());
 
     // create shaders
     Id offScreenShader = Gfx::CreateResource(Shaders::RenderTarget::Setup());
