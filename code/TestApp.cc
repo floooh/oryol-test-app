@@ -2,7 +2,7 @@
 //  TestApp.cc
 //------------------------------------------------------------------------------
 #include "Pre.h"
-#include "Core/App.h"
+#include "Core/Main.h"
 #include "Gfx/Gfx.h"
 #include "Assets/Gfx/ShapeBuilder.h"
 #include "glm/mat4x4.hpp"
@@ -75,7 +75,7 @@ TestApp::OnInit() {
     // and linear blending...
     auto rtSetup = TextureSetup::RenderTarget(128, 128);
     rtSetup.ColorFormat = PixelFormat::RGBA8;
-    rtSetup.DepthFormat = PixelFormat::D16;
+    rtSetup.DepthFormat = PixelFormat::DEPTH;
     rtSetup.Sampler.WrapU = TextureWrapMode::Repeat;
     rtSetup.Sampler.WrapV = TextureWrapMode::Repeat;
     rtSetup.Sampler.MagFilter = TextureFilterMode::Linear;
