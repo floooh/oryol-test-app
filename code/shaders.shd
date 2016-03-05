@@ -32,9 +32,7 @@
 }
 @end
 
-@bundle RenderTarget
-@program renderTargetVS renderTargetFS
-@end
+@program RenderTarget renderTargetVS renderTargetFS
 
 //------------------------------------------------------------------------------
 //  Vertex and fragment shaders for rendering into the frame buffer.
@@ -64,7 +62,5 @@
 }
 @end
 
-@bundle Main
-@program mainVS mainFS
-@end
+@program Main mainVS mainFS
 

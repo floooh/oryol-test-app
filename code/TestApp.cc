@@ -21,6 +21,8 @@ private:
     glm::mat4 computeMVP(const glm::mat4& proj, float32 rotX, float32 rotY, const glm::vec3& pos);
 
     Id renderTarget;
+    MeshBlock torusMeshBlock;
+    MeshBlock sphereMeshBlock;
     Id offscreenDrawState;
     Id displayDrawState;
     ClearState offscreenClearState;
@@ -48,13 +50,13 @@ TestApp::OnRunning() {
 
     // render donut to offscreen render target
     Gfx::ApplyRenderTarget(this->renderTarget, this->offscreenClearState);
-    Gfx::ApplyDrawState(this->offscreenDrawState);
+    Gfx::ApplyDrawState(this->offscreenDrawState, this->torusMeshBlock);
     Gfx::ApplyUniformBlock(this->offscreenParams);
     Gfx::Draw(0);
     
     // render sphere to display, with offscreen render target as texture
     Gfx::ApplyDefaultRenderTarget(this->displayClearState);
-    Gfx::ApplyDrawState(this->displayDrawState, this->displayFSTextures);
+    Gfx::ApplyDrawState(this->displayDrawState, this->sphereMeshBlock, this->displayFSTextures);
     Gfx::ApplyUniformBlock(this->displayVSParams);
     Gfx::Draw(0);
     
@@ -82,34 +84,31 @@ TestApp::OnInit() {
     rtSetup.Sampler.MinFilter = TextureFilterMode::Linear;
     this->renderTarget = Gfx::CreateResource(rtSetup);
     
-    // create a donut (this will be rendered into the offscreen render target)
+    // create offscreen rendering resources
     ShapeBuilder shapeBuilder;
     shapeBuilder.Layout
         .Add(VertexAttr::Position, VertexFormat::Float3)
         .Add(VertexAttr::Normal, VertexFormat::Byte4N);
     shapeBuilder.Box(1.0f, 1.0f, 1.0f, 1);
-    Id torus = Gfx::CreateResource(shapeBuilder.Build());
-    
-    // create a sphere mesh with normals and uv coords
-    shapeBuilder.Layout
-        .Add(VertexAttr::Position, VertexFormat::Float3)
-        .Add(VertexAttr::Normal, VertexFormat::Byte4N)
-        .Add(VertexAttr::TexCoord0, VertexFormat::Float2);
-    shapeBuilder.Sphere(0.5f, 72.0f, 40.0f);
-    Id sphere = Gfx::CreateResource(shapeBuilder.Build());
-
-    // create shaders
+    this->torusMeshBlock[0] = Gfx::CreateResource(shapeBuilder.Build());
     Id offScreenShader = Gfx::CreateResource(Shaders::RenderTarget::Setup());
-    Id dispShader = Gfx::CreateResource(Shaders::Main::Setup());
-    
-    // create one draw state for offscreen rendering, and one draw state for main target rendering
-    auto offdsSetup = DrawStateSetup::FromMeshAndShader(torus, offScreenShader);
+    auto offdsSetup = DrawStateSetup::FromLayoutAndShader(shapeBuilder.Layout, offScreenShader);
     offdsSetup.DepthStencilState.DepthWriteEnabled = true;
     offdsSetup.DepthStencilState.DepthCmpFunc = CompareFunc::LessEqual;
     offdsSetup.BlendState.ColorFormat = rtSetup.ColorFormat;
     offdsSetup.BlendState.DepthFormat = rtSetup.DepthFormat;    
     this->offscreenDrawState = Gfx::CreateResource(offdsSetup);
-    auto dispdsSetup = DrawStateSetup::FromMeshAndShader(sphere, dispShader);
+
+    // create display rendering resources
+    shapeBuilder.Layout
+        .Clear()
+        .Add(VertexAttr::Position, VertexFormat::Float3)
+        .Add(VertexAttr::Normal, VertexFormat::Byte4N)
+        .Add(VertexAttr::TexCoord0, VertexFormat::Float2);
+    shapeBuilder.Sphere(0.5f, 72.0f, 40.0f);
+    this->sphereMeshBlock[0] = Gfx::CreateResource(shapeBuilder.Build());
+    Id dispShader = Gfx::CreateResource(Shaders::Main::Setup());
+    auto dispdsSetup = DrawStateSetup::FromLayoutAndShader(shapeBuilder.Layout, dispShader);
     dispdsSetup.DepthStencilState.DepthWriteEnabled = true;
     dispdsSetup.DepthStencilState.DepthCmpFunc = CompareFunc::LessEqual;
     dispdsSetup.RasterizerState.SampleCount = gfxSetup.SampleCount;
