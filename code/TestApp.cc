@@ -21,20 +21,17 @@ private:
     glm::mat4 computeMVP(const glm::mat4& proj, float32 rotX, float32 rotY, const glm::vec3& pos);
 
     Id renderTarget;
-    MeshBlock torusMeshBlock;
-    MeshBlock sphereMeshBlock;
-    Id offscreenDrawState;
-    Id displayDrawState;
-    ClearState offscreenClearState;
-    ClearState displayClearState;
+    DrawState offscrDrawState;
+    DrawState mainDrawState;
+    ClearState offscrClearState;
+    ClearState mainClearState;
+    OffscreenShader::VSParams offscrVSParams;
+    MainShader::VSParams mainVSParams;
     glm::mat4 view;
     glm::mat4 offscreenProj;
     glm::mat4 displayProj;
     float32 angleX = 0.0f;
     float32 angleY = 0.0f;
-    Shaders::RenderTarget::VSParams offscreenParams;
-    Shaders::Main::VSParams displayVSParams;
-    Shaders::Main::FSTextures displayFSTextures;
 };
 OryolMain(TestApp);
 
@@ -45,19 +42,19 @@ TestApp::OnRunning() {
     // update animated parameters
     this->angleY += 0.01f;
     this->angleX += 0.02f;
-    this->offscreenParams.ModelViewProjection = this->computeMVP(this->offscreenProj, this->angleX, this->angleY, glm::vec3(0.0f, 0.0f, -3.0f));
-    this->displayVSParams.ModelViewProjection = this->computeMVP(this->displayProj, -this->angleX * 0.25f, this->angleY * 0.25f, glm::vec3(0.0f, 0.0f, -1.5f));;
+    this->offscrVSParams.ModelViewProjection = this->computeMVP(this->offscreenProj, this->angleX, this->angleY, glm::vec3(0.0f, 0.0f, -3.0f));
+    this->mainVSParams.ModelViewProjection = this->computeMVP(this->displayProj, -this->angleX * 0.25f, this->angleY * 0.25f, glm::vec3(0.0f, 0.0f, -1.5f));;
 
     // render donut to offscreen render target
-    Gfx::ApplyRenderTarget(this->renderTarget, this->offscreenClearState);
-    Gfx::ApplyDrawState(this->offscreenDrawState, this->torusMeshBlock);
-    Gfx::ApplyUniformBlock(this->offscreenParams);
+    Gfx::ApplyRenderTarget(this->renderTarget, this->offscrClearState);
+    Gfx::ApplyDrawState(this->offscrDrawState);
+    Gfx::ApplyUniformBlock(this->offscrVSParams);
     Gfx::Draw(0);
     
     // render sphere to display, with offscreen render target as texture
-    Gfx::ApplyDefaultRenderTarget(this->displayClearState);
-    Gfx::ApplyDrawState(this->displayDrawState, this->sphereMeshBlock, this->displayFSTextures);
-    Gfx::ApplyUniformBlock(this->displayVSParams);
+    Gfx::ApplyDefaultRenderTarget(this->mainClearState);
+    Gfx::ApplyDrawState(this->mainDrawState);
+    Gfx::ApplyUniformBlock(this->mainVSParams);
     Gfx::Draw(0);
     
     Gfx::CommitFrame();
@@ -90,14 +87,14 @@ TestApp::OnInit() {
         .Add(VertexAttr::Position, VertexFormat::Float3)
         .Add(VertexAttr::Normal, VertexFormat::Byte4N);
     shapeBuilder.Box(1.0f, 1.0f, 1.0f, 1);
-    this->torusMeshBlock[0] = Gfx::CreateResource(shapeBuilder.Build());
-    Id offScreenShader = Gfx::CreateResource(Shaders::RenderTarget::Setup());
-    auto offdsSetup = DrawStateSetup::FromLayoutAndShader(shapeBuilder.Layout, offScreenShader);
-    offdsSetup.DepthStencilState.DepthWriteEnabled = true;
-    offdsSetup.DepthStencilState.DepthCmpFunc = CompareFunc::LessEqual;
-    offdsSetup.BlendState.ColorFormat = rtSetup.ColorFormat;
-    offdsSetup.BlendState.DepthFormat = rtSetup.DepthFormat;    
-    this->offscreenDrawState = Gfx::CreateResource(offdsSetup);
+    this->offscrDrawState.Mesh[0] = Gfx::CreateResource(shapeBuilder.Build());
+    Id offScreenShader = Gfx::CreateResource(OffscreenShader::Setup());
+    auto offPipSetup = PipelineSetup::FromLayoutAndShader(shapeBuilder.Layout, offScreenShader);
+    offPipSetup.DepthStencilState.DepthWriteEnabled = true;
+    offPipSetup.DepthStencilState.DepthCmpFunc = CompareFunc::LessEqual;
+    offPipSetup.BlendState.ColorFormat = rtSetup.ColorFormat;
+    offPipSetup.BlendState.DepthFormat = rtSetup.DepthFormat;
+    this->offscrDrawState.Pipeline = Gfx::CreateResource(offPipSetup);
 
     // create display rendering resources
     shapeBuilder.Layout
@@ -106,18 +103,18 @@ TestApp::OnInit() {
         .Add(VertexAttr::Normal, VertexFormat::Byte4N)
         .Add(VertexAttr::TexCoord0, VertexFormat::Float2);
     shapeBuilder.Sphere(0.5f, 72.0f, 40.0f);
-    this->sphereMeshBlock[0] = Gfx::CreateResource(shapeBuilder.Build());
-    Id dispShader = Gfx::CreateResource(Shaders::Main::Setup());
-    auto dispdsSetup = DrawStateSetup::FromLayoutAndShader(shapeBuilder.Layout, dispShader);
-    dispdsSetup.DepthStencilState.DepthWriteEnabled = true;
-    dispdsSetup.DepthStencilState.DepthCmpFunc = CompareFunc::LessEqual;
-    dispdsSetup.RasterizerState.SampleCount = gfxSetup.SampleCount;
-    this->displayDrawState = Gfx::CreateResource(dispdsSetup);
-    this->displayFSTextures.Texture = this->renderTarget;
+    this->mainDrawState.Mesh[0] = Gfx::CreateResource(shapeBuilder.Build());
+    Id dispShader = Gfx::CreateResource(MainShader::Setup());
+    auto dispPipSetup = PipelineSetup::FromLayoutAndShader(shapeBuilder.Layout, dispShader);
+    dispPipSetup.DepthStencilState.DepthWriteEnabled = true;
+    dispPipSetup.DepthStencilState.DepthCmpFunc = CompareFunc::LessEqual;
+    dispPipSetup.RasterizerState.SampleCount = gfxSetup.SampleCount;
+    this->mainDrawState.Pipeline = Gfx::CreateResource(dispPipSetup);
+    this->mainDrawState.FSTexture[Textures::Texture] = this->renderTarget;
 
     // setup clear states
-    this->offscreenClearState.Color = glm::vec4(1.0f, 0.5f, 0.25f, 1.0f);
-    this->displayClearState.Color = glm::vec4(0.25f, 0.5f, 1.0f, 1.0f);
+    this->offscrClearState.Color = glm::vec4(1.0f, 0.5f, 0.25f, 1.0f);
+    this->mainClearState.Color = glm::vec4(0.25f, 0.5f, 1.0f, 1.0f);
 
     // setup static transform matrices
     float32 fbWidth = Gfx::DisplayAttrs().FramebufferWidth;
