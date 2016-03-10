@@ -58,7 +58,7 @@ sampler2D tex Texture
 {
     vec4 c = tex2D(tex, uv * vec2(40.0, 20.0));
     float l = clamp(dot(nrm.xyz, normalize(vec3(1.0, 1.0, -1.0))), 0.0, 1.0) * 2.0;
-    _color = c * (l + 0.25);
+    _color = vec4(c.xyz * (l + 0.25), 1.0);
 }
 @end
 
