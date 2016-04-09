@@ -19,8 +19,6 @@ fips_import_oryol_Assets()
 fips_import_oryol_Resource()
 fips_ide_group("Libs")
 fips_import_fips_glfw_glfw3()
-fips_import_oryol_flextgl()
-fips_import_oryol_ConvertUTF()
 fips_ide_group("")
 
 fips_finish()
