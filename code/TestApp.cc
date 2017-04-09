@@ -20,11 +20,9 @@ public:
 private:
     glm::mat4 computeMVP(const glm::mat4& proj, float32 rotX, float32 rotY, const glm::vec3& pos);
 
-    Id renderTarget;
+    Id renderPass;
     DrawState offscrDrawState;
     DrawState mainDrawState;
-    ClearState offscrClearState;
-    ClearState mainClearState;
     OffscreenShader::VSParams offscrVSParams;
     MainShader::VSParams mainVSParams;
     glm::mat4 view;
@@ -46,17 +44,19 @@ TestApp::OnRunning() {
     this->mainVSParams.ModelViewProjection = this->computeMVP(this->displayProj, -this->angleX * 0.25f, this->angleY * 0.25f, glm::vec3(0.0f, 0.0f, -1.5f));;
 
     // render donut to offscreen render target
-    Gfx::ApplyRenderTarget(this->renderTarget, this->offscrClearState);
+    Gfx::BeginPass(this->renderPass);
     Gfx::ApplyDrawState(this->offscrDrawState);
     Gfx::ApplyUniformBlock(this->offscrVSParams);
     Gfx::Draw(0);
+    Gfx::EndPass();
     
     // render sphere to display, with offscreen render target as texture
-    Gfx::ApplyDefaultRenderTarget(this->mainClearState);
+    Gfx::BeginPass();
     Gfx::ApplyDrawState(this->mainDrawState);
     Gfx::ApplyUniformBlock(this->mainVSParams);
     Gfx::Draw(0);
-    
+    Gfx::EndPass();
+
     Gfx::CommitFrame();
     
     // continue running or quit?
@@ -68,19 +68,21 @@ AppState::Code
 TestApp::OnInit() {
     // setup rendering system
     auto gfxSetup = GfxSetup::WindowMSAA4(800, 600, "Oryol Test App");
+    gfxSetup.DefaultPassAction = PassAction::Clear(glm::vec4(0.25f, 0.45f, 0.65f, 1.0f));
     Gfx::Setup(gfxSetup);
 
     // create an offscreen render target, we explicitly want repeat texture wrap mode
     // and linear blending...
-    auto rtSetup = TextureSetup::RenderTarget(128, 128);
-    rtSetup.ColorFormat = PixelFormat::RGBA8;
-    rtSetup.DepthFormat = PixelFormat::DEPTH;
+    auto rtSetup = TextureSetup::RenderTarget2D(128, 128, PixelFormat::RGBA8, PixelFormat::DEPTH);
     rtSetup.Sampler.WrapU = TextureWrapMode::Repeat;
     rtSetup.Sampler.WrapV = TextureWrapMode::Repeat;
     rtSetup.Sampler.MagFilter = TextureFilterMode::Linear;
     rtSetup.Sampler.MinFilter = TextureFilterMode::Linear;
-    this->renderTarget = Gfx::CreateResource(rtSetup);
-    
+    Id rtTex = Gfx::CreateResource(rtSetup);
+    auto passSetup = PassSetup::From(rtTex, rtTex);
+    passSetup.DefaultAction = PassAction::Clear(glm::vec4(0.25f, 0.65f, 0.45f, 1.0f));
+    this->renderPass = Gfx::CreateResource(passSetup);
+
     // create offscreen rendering resources
     ShapeBuilder shapeBuilder;
     shapeBuilder.Layout
@@ -110,11 +112,7 @@ TestApp::OnInit() {
     dispPipSetup.DepthStencilState.DepthCmpFunc = CompareFunc::LessEqual;
     dispPipSetup.RasterizerState.SampleCount = gfxSetup.SampleCount;
     this->mainDrawState.Pipeline = Gfx::CreateResource(dispPipSetup);
-    this->mainDrawState.FSTexture[Textures::Texture] = this->renderTarget;
-
-    // setup clear states
-    this->offscrClearState.Color = glm::vec4(1.0f, 0.5f, 0.25f, 1.0f);
-    this->mainClearState.Color = glm::vec4(0.25f, 0.5f, 1.0f, 1.0f);
+    this->mainDrawState.FSTexture[Textures::Texture] = rtTex;
 
     // setup static transform matrices
     float32 fbWidth = Gfx::DisplayAttrs().FramebufferWidth;
