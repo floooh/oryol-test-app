@@ -23,8 +23,8 @@ private:
     Id renderPass;
     DrawState offscrDrawState;
     DrawState mainDrawState;
-    OffscreenShader::VSParams offscrVSParams;
-    MainShader::VSParams mainVSParams;
+    OffscreenShader::params offscrVSParams;
+    MainShader::params mainVSParams;
     glm::mat4 view;
     glm::mat4 offscreenProj;
     glm::mat4 displayProj;
@@ -40,8 +40,8 @@ TestApp::OnRunning() {
     // update animated parameters
     this->angleY += 0.01f;
     this->angleX += 0.02f;
-    this->offscrVSParams.ModelViewProjection = this->computeMVP(this->offscreenProj, this->angleX, this->angleY, glm::vec3(0.0f, 0.0f, -3.0f));
-    this->mainVSParams.ModelViewProjection = this->computeMVP(this->displayProj, -this->angleX * 0.25f, this->angleY * 0.25f, glm::vec3(0.0f, 0.0f, -1.5f));;
+    this->offscrVSParams.mvp = this->computeMVP(this->offscreenProj, this->angleX, this->angleY, glm::vec3(0.0f, 0.0f, -3.0f));
+    this->mainVSParams.mvp = this->computeMVP(this->displayProj, -this->angleX * 0.25f, this->angleY * 0.25f, glm::vec3(0.0f, 0.0f, -1.5f));;
 
     // render donut to offscreen render target
     Gfx::BeginPass(this->renderPass);
@@ -112,7 +112,7 @@ TestApp::OnInit() {
     dispPipSetup.DepthStencilState.DepthCmpFunc = CompareFunc::LessEqual;
     dispPipSetup.RasterizerState.SampleCount = gfxSetup.SampleCount;
     this->mainDrawState.Pipeline = Gfx::CreateResource(dispPipSetup);
-    this->mainDrawState.FSTexture[Textures::Texture] = rtTex;
+    this->mainDrawState.FSTexture[MainShader::tex] = rtTex;
 
     // setup static transform matrices
     float32 fbWidth = Gfx::DisplayAttrs().FramebufferWidth;
